@@ -1,0 +1,45 @@
+stages:
+  prepare_data:
+    cmd: python scripts/prepare_data.py
+    deps:
+      - scripts/prepare_data.py
+      - src/prompt_firewall/data.py
+      - data/raw/prompts.csv
+    params:
+      - data.raw_path
+      - data.processed_path
+    outs:
+      - data/processed/prompts_clean.csv
+
+  train:
+    cmd: python scripts/train_model.py
+    deps:
+      - scripts/train_model.py
+      - src/prompt_firewall/train.py
+      - data/processed/prompts_clean.csv
+    params:
+      - training.random_state
+      - training.test_size
+      - training.max_features
+      - training.c_value
+      - model.path
+      - model.metrics_path
+      - mlflow.tracking_uri
+      - mlflow.experiment_name
+    outs:
+      - models/model.joblib
+    metrics:
+      - reports/metrics.json
+
+  monitor:
+    cmd: python scripts/monitor_data.py
+    deps:
+      - scripts/monitor_data.py
+      - src/prompt_firewall/monitor.py
+      - data/processed/prompts_clean.csv
+    params:
+      - monitoring.reference_data_path
+      - monitoring.current_data_path
+      - monitoring.report_path
+    outs:
+      - reports/evidently_report.html

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+mlruns/
+reports/evidently_report.html
+models/model.joblib
+data/processed/prompts_clean.csv
+bom.json
+gitleaks-report.json
