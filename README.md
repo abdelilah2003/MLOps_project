@@ -59,6 +59,30 @@ bandit -q -r src scripts
 pip-audit
 ```
 
+## MLflow UI (visualize all experiments)
+Training logs are sent to the MLflow tracking URI configured in `params.yaml` (`mlflow.tracking_uri`).
+
+### 1) Run training first (to create runs)
+```bash
+dvc repro train
+```
+
+### 2) Start MLflow UI
+```bash
+mlflow ui --backend-store-uri ./mlruns --host 0.0.0.0 --port 5000
+```
+
+### 3) Open MLflow in browser
+- `http://localhost:5000`
+
+### 4) What you will see
+- Experiment name: `prompt-firewall`
+- Run parameters: `random_state`, `test_size`, `max_features`, `c_value`
+- Metrics: `accuracy`, `precision`, `recall`, `f1`
+- Artifacts: model and metrics files
+
+> If you change `mlflow.tracking_uri` in `params.yaml`, start the UI against that same URI to see the correct experiment history.
+
 ## Run API
 ```bash
 MODEL_PATH=models/model.joblib uvicorn prompt_firewall.api:app --host 0.0.0.0 --port 8000
