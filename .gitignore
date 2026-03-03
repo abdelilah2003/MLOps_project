@@ -9,3 +9,4 @@ reports/evidently_report.html
 models/model.joblib
 data/processed/prompts_clean.csv
 bom.json
+gitleaks-report.json

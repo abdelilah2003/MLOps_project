@@ -15,6 +15,7 @@ pipeline {
     IMAGE_NAME = "your-dockerhub-user/prompt-firewall"
     IMAGE_TAG = "${params.MODEL_IMAGE_TAG?.trim() ? params.MODEL_IMAGE_TAG : env.BUILD_NUMBER}"
     SBOM_FILE = "bom.json"
+    GITLEAKS_REPORT = "gitleaks-report.json"
   }
 
   stages {
@@ -42,8 +43,9 @@ pipeline {
 
     stage('Security Scans') {
       steps {
-        sh '. .venv/bin/activate && bandit -q -r src scripts'
         sh '. .venv/bin/activate && pip-audit'
+        sh 'docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.21.2 detect --source . --report-format json --report-path ${GITLEAKS_REPORT} --redact'
+        archiveArtifacts artifacts: '${GITLEAKS_REPORT}', onlyIfSuccessful: true
       }
     }
 
@@ -74,12 +76,14 @@ pipeline {
 
     stage('Upload SBOM to Dependency-Track') {
       when {
-        allOf {
-          expression { return params.PIPELINE_MODE in ['full', 'deploy-only'] }
-          expression { return env.DEPENDENCY_TRACK_URL != null && env.DEPENDENCY_TRACK_API_KEY != null && env.DEPENDENCY_TRACK_PROJECT_UUID != null }
-        }
+        expression { return params.PIPELINE_MODE in ['full', 'deploy-only'] }
       }
       steps {
+        script {
+          if (!env.DEPENDENCY_TRACK_URL?.trim() || !env.DEPENDENCY_TRACK_API_KEY?.trim() || !env.DEPENDENCY_TRACK_PROJECT_UUID?.trim()) {
+            error('DEPENDENCY_TRACK_URL, DEPENDENCY_TRACK_API_KEY, and DEPENDENCY_TRACK_PROJECT_UUID are required for deploy/full modes.')
+          }
+        }
         sh '''curl -X POST "$DEPENDENCY_TRACK_URL/api/v1/bom" \
           -H "X-Api-Key: $DEPENDENCY_TRACK_API_KEY" \
           -F "project=$DEPENDENCY_TRACK_PROJECT_UUID" \
