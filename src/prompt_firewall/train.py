@@ -22,7 +22,11 @@ def train_and_log(
 ) -> dict:
     df = pd.read_csv(input_path)
     X_train, X_test, y_train, y_test = train_test_split(
-        df["prompt"], df["label"], test_size=test_size, random_state=random_state, stratify=df["label"]
+        df["prompt"],
+        df["label"],
+        test_size=test_size,
+        random_state=random_state,
+        stratify=df["label"],
     )
 
     clf = Pipeline(
