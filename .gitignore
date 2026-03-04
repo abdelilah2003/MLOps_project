@@ -10,3 +10,5 @@ models/model.joblib
 data/processed/prompts_clean.csv
 bom.json
 gitleaks-report.json
+mlflow.db
+mlflow.db-journal

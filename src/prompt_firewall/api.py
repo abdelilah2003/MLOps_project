@@ -3,10 +3,12 @@ from pathlib import Path
 import joblib
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/model.joblib"))
 app = FastAPI(title="Prompt Firewall API")
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 class PromptRequest(BaseModel):

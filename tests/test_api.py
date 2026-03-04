@@ -15,6 +15,13 @@ def test_health():
     assert "model_exists" in body
 
 
+def test_metrics_endpoint_available():
+    response = client.get("/metrics")
+    assert response.status_code == 200
+
+
+def test_check_without_model_returns_503():
+    response = client.post("/check", json={"prompt": "hello"})
 def test_check_without_model_returns_503():
     response = client.post("/check", json={"prompt": "hello"})
     response = client.post("/check", json={"prompt": "hello"})

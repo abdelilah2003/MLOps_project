@@ -7,10 +7,15 @@ training:
   test_size: 0.2
   max_features: 5000
   c_value: 1.0
+  selection_metric: f1
 
 model:
   path: models/model.joblib
   metrics_path: reports/metrics.json
+  registry_name: prompt-firewall-classifier
+
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
 
 mlflow:
   tracking_uri: file:./mlruns

@@ -22,6 +22,10 @@ stages:
       - training.test_size
       - training.max_features
       - training.c_value
+      - training.selection_metric
+      - model.path
+      - model.metrics_path
+      - model.registry_name
       - model.path
       - model.metrics_path
       - mlflow.tracking_uri

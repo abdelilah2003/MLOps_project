@@ -15,4 +15,6 @@ if __name__ == "__main__":
         test_size=params["training"]["test_size"],
         max_features=params["training"]["max_features"],
         c_value=params["training"]["c_value"],
+        registry_model_name=params["model"]["registry_name"],
+        selection_metric=params["training"]["selection_metric"],
     )
