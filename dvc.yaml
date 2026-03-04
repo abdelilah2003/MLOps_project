@@ -26,6 +26,8 @@ stages:
       - model.path
       - model.metrics_path
       - model.registry_name
+      - model.path
+      - model.metrics_path
       - mlflow.tracking_uri
       - mlflow.experiment_name
     outs:

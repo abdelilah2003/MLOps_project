@@ -16,6 +16,9 @@ model:
 
 mlflow:
   tracking_uri: sqlite:///mlflow.db
+
+mlflow:
+  tracking_uri: file:./mlruns
   experiment_name: prompt-firewall
 
 monitoring:
