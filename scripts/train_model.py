@@ -2,7 +2,6 @@ from pathlib import Path
 from prompt_firewall.config import load_params
 from prompt_firewall.train import train_and_log
 
-
 if __name__ == "__main__":
     params = load_params()
     train_and_log(
