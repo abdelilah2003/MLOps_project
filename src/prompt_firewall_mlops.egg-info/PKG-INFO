@@ -13,6 +13,7 @@ Requires-Dist: evidently>=0.4.33
 Requires-Dist: fastapi>=0.112.0
 Requires-Dist: uvicorn>=0.30.0
 Requires-Dist: pydantic>=2.8.0
+Requires-Dist: prometheus-fastapi-instrumentator>=7.0.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.3.0; extra == "dev"
 Requires-Dist: ruff>=0.5.7; extra == "dev"

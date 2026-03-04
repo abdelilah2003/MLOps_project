@@ -56,7 +56,6 @@ def _candidate_models(random_state: int, max_features: int, c_value: float) -> d
             ]
         ),
     }
-from sklearn.pipeline import Pipeline
 
 
 def train_and_log(
