@@ -41,6 +41,7 @@ pipeline {
       }
     }
 
+
     stage('Security Scans') {
       steps {
 
@@ -49,10 +50,17 @@ pipeline {
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          sh 'docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.21.2 detect --source . --report-format json --report-path ${GITLEAKS_REPORT} --redact'
+          sh '''
+          docker run --rm -v "$PWD:/repo" -w /repo \
+          zricethezav/gitleaks:v8.21.2 detect \
+          --source . \
+          --report-format json \
+          --report-path gitleaks-report.json \
+          --redact
+          '''
         }
 
-        archiveArtifacts artifacts: '${GITLEAKS_REPORT}', onlyIfSuccessful: false
+        archiveArtifacts artifacts: 'gitleaks-report.json', onlyIfSuccessful: false
       }
     }
 
