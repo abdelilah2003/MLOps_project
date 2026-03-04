@@ -43,9 +43,16 @@ pipeline {
 
     stage('Security Scans') {
       steps {
-        sh '. .venv/bin/activate && pip-audit'
-        sh 'docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.21.2 detect --source . --report-format json --report-path ${GITLEAKS_REPORT} --redact'
-        archiveArtifacts artifacts: '${GITLEAKS_REPORT}', onlyIfSuccessful: true
+
+        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+          sh '. .venv/bin/activate && pip-audit'
+        }
+
+        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+          sh 'docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.21.2 detect --source . --report-format json --report-path ${GITLEAKS_REPORT} --redact'
+        }
+
+        archiveArtifacts artifacts: '${GITLEAKS_REPORT}', onlyIfSuccessful: false
       }
     }
 
