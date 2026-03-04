@@ -1,5 +1,5 @@
 data:
-  raw_path: data/raw/prompts.csv
+  raw_path: data/raw/final_dataset.csv
   processed_path: data/processed/prompts_clean.csv
 
 training:
