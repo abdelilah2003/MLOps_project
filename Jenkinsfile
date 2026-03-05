@@ -20,6 +20,7 @@ pipeline {
     GITLEAKS_REPORT = "gitleaks-report.json"
     PIP_AUDIT_REPORT = "pip-audit-report.json"
     TRIVY_REPORT = "trivy-report.json"
+    MLFLOW_TRACKING_URI = "http://localhost:5000"
   }
 
   stages {
@@ -30,16 +31,20 @@ pipeline {
       }
     }
 
+
     stage('Install') {
       steps {
         sh '''
-        python3 -m venv .venv
-        . .venv/bin/activate
-        pip install --upgrade pip
-        pip install .[dev]
+          rm -rf .venv
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
         '''
       }
     }
+
+
 
     stage('Lint & Test') {
       steps {
