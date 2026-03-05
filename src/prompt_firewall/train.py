@@ -18,7 +18,6 @@ from sklearn.naive_bayes import MultinomialNB  # noqa: F401
 from sklearn.ensemble import RandomForestClassifier  # noqa: F401
 
 
-
 def _compute_metrics(y_true, y_pred) -> dict:
     return {
         "accuracy": accuracy_score(y_true, y_pred),
@@ -26,6 +25,7 @@ def _compute_metrics(y_true, y_pred) -> dict:
         "recall": recall_score(y_true, y_pred, zero_division=0),
         "f1": f1_score(y_true, y_pred, zero_division=0),
     }
+
 
 def build_model(random_state: int, max_features: int, c_value: float):
     """
@@ -52,32 +52,33 @@ def build_model(random_state: int, max_features: int, c_value: float):
     # algorithm_name = "linear_svc"
 
     # --- MODEL 3: Multinomial Naive Bayes ---
-    #model = Pipeline(
-       # steps=[
-      #      ("tfidf", TfidfVectorizer(max_features=max_features)),
-     #       ("clf", MultinomialNB()),
+    # model = Pipeline(
+    # steps=[
+    #      ("tfidf", TfidfVectorizer(max_features=max_features)),
+    #       ("clf", MultinomialNB()),
     #    ]
-    #)
-    #algorithm_name = "multinomial_nb"
+    # )
+    # algorithm_name = "multinomial_nb"
 
     # --- MODEL 4: Random Forest ---
-    #model = Pipeline(
-     #   steps=[
-      #      ("tfidf", TfidfVectorizer(max_features=max_features)),
-       #     (
-        #        "clf",
-         #       RandomForestClassifier(
-          #          n_estimators=200,
-           #         random_state=random_state,
-            #        class_weight="balanced",
-             #       n_jobs=-1,
-              #  ),
-           # ),
-       # ]
-   # )
-    #algorithm_name = "random_forest"
+    # model = Pipeline(
+    #   steps=[
+    #      ("tfidf", TfidfVectorizer(max_features=max_features)),
+    #     (
+    #        "clf",
+    #       RandomForestClassifier(
+    #          n_estimators=200,
+    #         random_state=random_state,
+    #        class_weight="balanced",
+    #       n_jobs=-1,
+    #  ),
+    # ),
+    # ]
+    # )
+    # algorithm_name = "random_forest"
 
     return model, algorithm_name
+
 
 def train_and_log(
     input_path: Path,
@@ -115,7 +116,7 @@ def train_and_log(
             client.restore_experiment(exp.experiment_id)
     else:
         mlflow.create_experiment(experiment_name)
-    
+
     mlflow.set_experiment(experiment_name)
 
     model, algorithm_name = build_model(random_state, max_features, c_value)
@@ -129,22 +130,22 @@ def train_and_log(
 
         print("Metrics:", metrics)
 
-        mlflow.log_params({
-            "algorithm": algorithm_name,
-            "random_state": random_state,
-            "max_features": max_features,
-            "c_value": c_value,
-        })
+        mlflow.log_params(
+            {
+                "algorithm": algorithm_name,
+                "random_state": random_state,
+                "max_features": max_features,
+                "c_value": c_value,
+            }
+        )
 
         mlflow.log_metrics(metrics)
 
         # Log and Register model WITHIN the run block to fix artifact warnings
         model_info = mlflow.sklearn.log_model(
-            sk_model=model, 
-            artifact_path="model",
-            registered_model_name=registry_model_name
+            sk_model=model, artifact_path="model", registered_model_name=registry_model_name
         )
-        
+
         print("Run ID:", run.info.run_id)
         new_version = model_info.registered_model_version
 
@@ -170,7 +171,7 @@ def train_and_log(
     try:
         # Check if a "champion" model already exists
         champion_version = client.get_model_version_by_alias(registry_model_name, "champion")
-        
+
         # Get metrics for the champion
         champ_run = mlflow.get_run(champion_version.run_id)
         old_f1 = champ_run.data.metrics.get("f1", 0)
@@ -189,16 +190,13 @@ def train_and_log(
     if promote:
         print(f"Promoting model version {new_version} to 'champion' alias...")
         client.set_registered_model_alias(
-            name=registry_model_name,
-            alias="champion",
-            version=str(new_version)
+            name=registry_model_name, alias="champion", version=str(new_version)
         )
         print("Model promoted successfully.")
     else:
         print(f"Model version {new_version} remains a challenger.")
 
     return metrics
-
 
 
 # ... existing imports ...
