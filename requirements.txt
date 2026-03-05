@@ -141,7 +141,6 @@ polyfactory==3.3.0
 prettytable==3.17.0
 prometheus-fastapi-instrumentator==7.1.0
 prometheus_client==0.24.1
-prompt-firewall-mlops @ file:///home/abdu/Desktop/final/MLOps_project
 prompt_toolkit==3.0.52
 propcache==0.4.1
 protobuf==6.33.5
