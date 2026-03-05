@@ -203,7 +203,7 @@ def train_and_log(
 
 if __name__ == "__main__":
     # Load parameters from params.yml
-    with open("params.yml", "r") as f:
+    with open("params.yaml", "r") as f:
         params = yaml.safe_load(f)
 
     train_and_log(
