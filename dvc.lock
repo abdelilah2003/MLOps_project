@@ -1,2 +1,69 @@
 schema: '2.0'
-stages: {}
+stages:
+  prepare_data:
+    cmd: python -m prompt_firewall.data
+    deps:
+    - path: data/raw/prompts.csv
+      hash: md5
+      md5: 17cb487d5b8415e4002f3039f1a76516
+      size: 386
+    - path: src/prompt_firewall/data.py
+      hash: md5
+      md5: 6cb9eefd42893b83fce236f071c5d939
+      size: 1038
+    outs:
+    - path: data/processed/prompts.csv
+      hash: md5
+      md5: e72b2f6391508bd74ed3eadce43d9706
+      size: 318197
+  train:
+    cmd: python -m prompt_firewall.train
+    deps:
+    - path: data/processed/prompts.csv
+      hash: md5
+      md5: e72b2f6391508bd74ed3eadce43d9706
+      size: 318197
+    - path: src/prompt_firewall/train.py
+      hash: md5
+      md5: 5d96b9ec4c4b98df86de666ba123cd4c
+      size: 6808
+    params:
+      params.yaml:
+        mlflow:
+          tracking_uri: http://localhost:5000
+          experiment_name: prompt-firewall
+        model:
+          path: artifacts/model.pkl
+          metrics_path: artifacts/metrics.json
+          registry_name: prompt-firewall-model
+        training:
+          random_state: 42
+          test_size: 0.2
+          max_features: 5000
+          c_value: 1.0
+          selection_metric: f1
+    outs:
+    - path: artifacts/metrics.json
+      hash: md5
+      md5: f1df67a6b17709a459f3c89f99bfa1b6
+      size: 118
+    - path: artifacts/model.pkl
+      hash: md5
+      md5: fc407a8fef248b96a06b830e23fae8c2
+      size: 176660
+  monitor:
+    cmd: python -m prompt_firewall.monitor
+    deps:
+    - path: data/processed/prompts.csv
+      hash: md5
+      md5: e72b2f6391508bd74ed3eadce43d9706
+      size: 318197
+    - path: src/prompt_firewall/monitor.py
+      hash: md5
+      md5: 7fa30b84430abd7dfb020c6473872505
+      size: 960
+    outs:
+    - path: reports/evidently_report.html
+      hash: md5
+      md5: deabc5170dfbe2278b954736df0d72aa
+      size: 3515966
