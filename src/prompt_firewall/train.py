@@ -13,9 +13,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 # ALGORITHMS
-from sklearn.svm import LinearSVC
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import LinearSVC  # noqa: F401
+from sklearn.naive_bayes import MultinomialNB  # noqa: F401
+from sklearn.ensemble import RandomForestClassifier  # noqa: F401
+
+
 
 def _compute_metrics(y_true, y_pred) -> dict:
     return {
@@ -143,7 +145,7 @@ def train_and_log(
             registered_model_name=registry_model_name
         )
         
-        run_id = run.info.run_id
+        print("Run ID:", run.info.run_id)
         new_version = model_info.registered_model_version
 
     # Save local artifacts
