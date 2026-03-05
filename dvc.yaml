@@ -1,49 +1,25 @@
 stages:
+
   prepare_data:
-    cmd: python scripts/prepare_data.py
+    cmd: python -m prompt_firewall.data
     deps:
-      - scripts/prepare_data.py
       - src/prompt_firewall/data.py
       - data/raw/prompts.csv
-    params:
-      - data.raw_path
-      - data.processed_path
     outs:
-      - data/processed/prompts_clean.csv
+      - data/processed/prompts.csv
 
   train:
-    cmd: python scripts/train_model.py
+    cmd: python -m prompt_firewall.train
     deps:
-      - scripts/train_model.py
       - src/prompt_firewall/train.py
-      - data/processed/prompts_clean.csv
-    params:
-      - training.random_state
-      - training.test_size
-      - training.max_features
-      - training.c_value
-      - training.selection_metric
-      - model.path
-      - model.metrics_path
-      - model.registry_name
-      - model.path
-      - model.metrics_path
-      - mlflow.tracking_uri
-      - mlflow.experiment_name
+      - data/processed/prompts.csv
     outs:
-      - models/model.joblib
+      - artifacts/model.pkl
     metrics:
-      - reports/metrics.json
+      - artifacts/metrics.json
 
   monitor:
-    cmd: python scripts/monitor_data.py
+    cmd: python -m prompt_firewall.monitor
     deps:
-      - scripts/monitor_data.py
       - src/prompt_firewall/monitor.py
-      - data/processed/prompts_clean.csv
-    params:
-      - monitoring.reference_data_path
-      - monitoring.current_data_path
-      - monitoring.report_path
-    outs:
-      - reports/evidently_report.html
+      - data/processed/prompts.csv

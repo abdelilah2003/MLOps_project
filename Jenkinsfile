@@ -14,11 +14,16 @@ pipeline {
   environment {
     IMAGE_NAME = "abduuu0/prompt-firewall"
     IMAGE_TAG = "${params.MODEL_IMAGE_TAG?.trim() ? params.MODEL_IMAGE_TAG : env.BUILD_NUMBER}"
+
     SBOM_FILE = "bom.json"
+
     GITLEAKS_REPORT = "gitleaks-report.json"
+    PIP_AUDIT_REPORT = "pip-audit-report.json"
+    TRIVY_REPORT = "trivy-report.json"
   }
 
   stages {
+
     stage('Checkout') {
       steps {
         checkout scm
@@ -27,39 +32,52 @@ pipeline {
 
     stage('Install') {
       steps {
-        sh 'python3 -m venv .venv'
-        sh '. .venv/bin/activate && pip install --upgrade pip'
-        sh '. .venv/bin/activate && pip install .[dev]'
+        sh '''
+        python3 -m venv .venv
+        . .venv/bin/activate
+        pip install --upgrade pip
+        pip install .[dev]
+        '''
       }
     }
 
     stage('Lint & Test') {
       steps {
-        sh '. .venv/bin/activate && ruff check src tests scripts'
-        sh '. .venv/bin/activate && black --check src tests scripts'
-        sh '. .venv/bin/activate && pytest -q'
+        sh '''
+        . .venv/bin/activate
+        ruff check src tests scripts
+        black --check src tests scripts
+        pytest -q
+        '''
       }
     }
-
 
     stage('Security Scans') {
       steps {
 
-        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          sh '. .venv/bin/activate && pip-audit'
+        script {
+
+          catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+            sh '''
+            . .venv/bin/activate
+            pip-audit -f json -o pip-audit-report.json
+            '''
+          }
+
+          catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+            sh '''
+            docker run --rm -v "$PWD:/repo" -w /repo \
+            zricethezav/gitleaks:v8.21.2 detect \
+            --source . \
+            --report-format json \
+            --report-path gitleaks-report.json \
+            --redact
+            '''
+          }
+
         }
 
-        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          sh '''
-          docker run --rm -v "$PWD:/repo" -w /repo \
-          zricethezav/gitleaks:v8.21.2 detect \
-          --source . \
-          --report-format json \
-          --report-path gitleaks-report.json \
-          --redact
-          '''
-        }
-
+        archiveArtifacts artifacts: 'pip-audit-report.json', onlyIfSuccessful: false
         archiveArtifacts artifacts: 'gitleaks-report.json', onlyIfSuccessful: false
       }
     }
@@ -70,11 +88,23 @@ pipeline {
       }
       steps {
         script {
+
           if (params.DVC_TARGET == 'all') {
-            sh '. .venv/bin/activate && dvc repro'
+
+            sh '''
+            . .venv/bin/activate
+            dvc repro
+            '''
+
           } else {
-            sh ". .venv/bin/activate && dvc repro ${params.DVC_TARGET}"
+
+            sh """
+            . .venv/bin/activate
+            dvc repro ${params.DVC_TARGET}
+            """
+
           }
+
         }
       }
     }
@@ -84,8 +114,13 @@ pipeline {
         expression { return params.PIPELINE_MODE in ['full', 'deploy-only'] }
       }
       steps {
-        sh '. .venv/bin/activate && cyclonedx-py environment --of JSON --output-file ${SBOM_FILE}'
-        archiveArtifacts artifacts: '${SBOM_FILE}', onlyIfSuccessful: true
+
+        sh '''
+        . .venv/bin/activate
+        cyclonedx-py environment --of JSON --output-file bom.json
+        '''
+
+        archiveArtifacts artifacts: 'bom.json', onlyIfSuccessful: false
       }
     }
 
@@ -94,15 +129,23 @@ pipeline {
         expression { return params.PIPELINE_MODE in ['full', 'deploy-only'] }
       }
       steps {
+
         script {
-          if (!env.DEPENDENCY_TRACK_URL?.trim() || !env.DEPENDENCY_TRACK_API_KEY?.trim() || !env.DEPENDENCY_TRACK_PROJECT_UUID?.trim()) {
-            error('DEPENDENCY_TRACK_URL, DEPENDENCY_TRACK_API_KEY, and DEPENDENCY_TRACK_PROJECT_UUID are required for deploy/full modes.')
+          if (!env.DEPENDENCY_TRACK_URL?.trim() ||
+              !env.DEPENDENCY_TRACK_API_KEY?.trim() ||
+              !env.DEPENDENCY_TRACK_PROJECT_UUID?.trim()) {
+
+            error('Dependency-Track configuration missing')
+
           }
         }
-        sh '''curl -X POST "$DEPENDENCY_TRACK_URL/api/v1/bom" \
+
+        sh '''
+        curl -X POST "$DEPENDENCY_TRACK_URL/api/v1/bom" \
           -H "X-Api-Key: $DEPENDENCY_TRACK_API_KEY" \
           -F "project=$DEPENDENCY_TRACK_PROJECT_UUID" \
-          -F "bom=@$SBOM_FILE"'''
+          -F "bom=@bom.json"
+        '''
       }
     }
 
@@ -111,18 +154,37 @@ pipeline {
         expression { return params.PIPELINE_MODE in ['full', 'deploy-only'] }
       }
       steps {
-        sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
-        sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest'
+
+        sh '''
+        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+        '''
+
       }
     }
-
 
     stage('Trivy Image Scan') {
       when {
         expression { return params.PIPELINE_MODE in ['full', 'deploy-only'] }
       }
       steps {
-        sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 image --severity HIGH,CRITICAL --exit-code 1 ${IMAGE_NAME}:${IMAGE_TAG}'
+
+        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+
+          sh '''
+          docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $PWD:/project \
+          aquasec/trivy:0.56.2 image \
+          --severity HIGH,CRITICAL \
+          --format json \
+          --output trivy-report.json \
+          ${IMAGE_NAME}:${IMAGE_TAG}
+          '''
+
+        }
+
+        archiveArtifacts artifacts: 'trivy-report.json', onlyIfSuccessful: false
       }
     }
 
@@ -133,13 +195,27 @@ pipeline {
           expression { return env.DOCKERHUB_CREDENTIALS_ID != null }
         }
       }
+
       steps {
-        withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-          sh 'docker push ${IMAGE_NAME}:${IMAGE_TAG}'
-          sh 'docker push ${IMAGE_NAME}:latest'
+
+        withCredentials([
+          usernamePassword(
+            credentialsId: env.DOCKERHUB_CREDENTIALS_ID,
+            usernameVariable: 'DOCKER_USER',
+            passwordVariable: 'DOCKER_PASS'
+          )
+        ]) {
+
+          sh '''
+          echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+          docker push ${IMAGE_NAME}:${IMAGE_TAG}
+          docker push ${IMAGE_NAME}:latest
+          '''
+
         }
+
       }
     }
+
   }
 }
