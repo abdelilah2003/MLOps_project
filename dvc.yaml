@@ -1,5 +1,4 @@
 stages:
-
   prepare_data:
     cmd: python -m prompt_firewall.data
     deps:
@@ -13,6 +12,10 @@ stages:
     deps:
       - src/prompt_firewall/train.py
       - data/processed/prompts.csv
+    params:
+      - training        # DVC will watch all keys under 'training'
+      - model
+      - mlflow
     outs:
       - artifacts/model.pkl
     metrics:
@@ -23,3 +26,5 @@ stages:
     deps:
       - src/prompt_firewall/monitor.py
       - data/processed/prompts.csv
+    outs:
+      - reports/evidently_report.html

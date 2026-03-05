@@ -1,6 +1,6 @@
 data:
-  raw_path: data/raw/final_dataset.csv
-  processed_path: data/processed/prompts_clean.csv
+  raw_path: data/raw/prompts.csv            # Sync with dvc.yml deps
+  processed_path: data/processed/prompts.csv # Sync with train.py input
 
 training:
   random_state: 42
@@ -10,18 +10,13 @@ training:
   selection_metric: f1
 
 model:
-  path: models/model.joblib
-  metrics_path: reports/metrics.json
-  registry_name: prompt-firewall-classifier
+  path: artifacts/model.pkl                # Sync with dvc.yml outs
+  metrics_path: artifacts/metrics.json     # Sync with dvc.yml metrics
+  registry_name: prompt-firewall-model
 
 mlflow:
-  tracking_uri: sqlite:///mlflow.db
-
-mlflow:
-  tracking_uri: file:./mlruns
+  tracking_uri: http://localhost:5000      # Use the server URI
   experiment_name: prompt-firewall
 
 monitoring:
-  reference_data_path: data/processed/prompts_clean.csv
-  current_data_path: data/processed/prompts_clean.csv
   report_path: reports/evidently_report.html

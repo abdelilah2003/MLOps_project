@@ -3,6 +3,8 @@ import joblib
 import mlflow
 import pandas as pd
 from mlflow import MlflowClient
+import yaml
+
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -195,16 +197,24 @@ def train_and_log(
 
     return metrics
 
+
+
+# ... existing imports ...
+
 if __name__ == "__main__":
+    # Load parameters from params.yml
+    with open("params.yml", "r") as f:
+        params = yaml.safe_load(f)
+
     train_and_log(
-        input_path=Path("data/processed/prompts.csv"),
-        model_path=Path("artifacts/model.pkl"),
-        metrics_path=Path("artifacts/metrics.json"),
-        tracking_uri="http://localhost:5000",
-        experiment_name="prompt-firewall",
-        random_state=42,
-        test_size=0.2,
-        max_features=5000,
-        c_value=1.0,
-        registry_model_name="prompt-firewall-model",
+        input_path=Path(params["data"]["processed_path"]),
+        model_path=Path(params["model"]["path"]),
+        metrics_path=Path(params["model"]["metrics_path"]),
+        tracking_uri=params["mlflow"]["tracking_uri"],
+        experiment_name=params["mlflow"]["experiment_name"],
+        random_state=params["training"]["random_state"],
+        test_size=params["training"]["test_size"],
+        max_features=params["training"]["max_features"],
+        c_value=params["training"]["c_value"],
+        registry_model_name=params["model"]["registry_name"],
     )
