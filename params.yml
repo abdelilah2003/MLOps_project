@@ -1,0 +1,22 @@
+data:
+  raw_path: data/raw/prompts.csv            # Sync with dvc.yml deps
+  processed_path: data/processed/prompts.csv # Sync with train.py input
+
+training:
+  random_state: 42
+  test_size: 0.2
+  max_features: 5000
+  c_value: 1.0
+  selection_metric: f1
+
+model:
+  path: artifacts/model.pkl                # Sync with dvc.yml outs
+  metrics_path: artifacts/metrics.json     # Sync with dvc.yml metrics
+  registry_name: prompt-firewall-model
+
+mlflow:
+  tracking_uri: http://localhost:5000      # Use the server URI
+  experiment_name: prompt-firewall
+
+monitoring:
+  report_path: reports/evidently_report.html
