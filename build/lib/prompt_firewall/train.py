@@ -3,14 +3,19 @@ import joblib
 import mlflow
 import pandas as pd
 from mlflow import MlflowClient
+import yaml
+
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
-from sklearn.svm import LinearSVC
-from sklearn.ensemble import RandomForestClassifier
+
+# ALGORITHMS
+from sklearn.svm import LinearSVC  # noqa: F401
+from sklearn.naive_bayes import MultinomialNB  # noqa: F401
+from sklearn.ensemble import RandomForestClassifier  # noqa: F401
 
 
 def _compute_metrics(y_true, y_pred) -> dict:
@@ -22,40 +27,57 @@ def _compute_metrics(y_true, y_pred) -> dict:
     }
 
 
-def _candidate_models(random_state: int, max_features: int, c_value: float) -> dict:
-    return {
-        "logistic_regression": Pipeline(
-            steps=[
-                ("tfidf", TfidfVectorizer(max_features=max_features)),
-                ("clf", LogisticRegression(C=c_value, random_state=random_state, max_iter=500)),
-            ]
-        ),
-        "linear_svc": Pipeline(
-            steps=[
-                ("tfidf", TfidfVectorizer(max_features=max_features)),
-                ("clf", LinearSVC(C=c_value, random_state=random_state)),
-            ]
-        ),
-        "multinomial_nb": Pipeline(
-            steps=[
-                ("tfidf", TfidfVectorizer(max_features=max_features)),
-                ("clf", MultinomialNB()),
-            ]
-        ),
-        "random_forest": Pipeline(
-            steps=[
-                ("tfidf", TfidfVectorizer(max_features=max_features)),
-                (
-                    "clf",
-                    RandomForestClassifier(
-                        n_estimators=200,
-                        random_state=random_state,
-                        class_weight="balanced",
-                    ),
-                ),
-            ]
-        ),
-    }
+def build_model(random_state: int, max_features: int, c_value: float):
+    """
+    SELECT ONE MODEL ONLY
+    Comment / uncomment to test different algorithms
+    """
+
+    # --- MODEL 1: Logistic Regression ---
+    model = Pipeline(
+        steps=[
+            ("tfidf", TfidfVectorizer(max_features=max_features)),
+            ("clf", LogisticRegression(C=c_value, random_state=random_state, max_iter=500)),
+        ]
+    )
+    algorithm_name = "logistic_regression"
+
+    # --- MODEL 2: Linear SVC ---
+    # model = Pipeline(
+    #     steps=[
+    #         ("tfidf", TfidfVectorizer(max_features=max_features)),
+    #         ("clf", LinearSVC(C=c_value, random_state=random_state)),
+    #     ]
+    # )
+    # algorithm_name = "linear_svc"
+
+    # --- MODEL 3: Multinomial Naive Bayes ---
+    # model = Pipeline(
+    # steps=[
+    #      ("tfidf", TfidfVectorizer(max_features=max_features)),
+    #       ("clf", MultinomialNB()),
+    #    ]
+    # )
+    # algorithm_name = "multinomial_nb"
+
+    # --- MODEL 4: Random Forest ---
+    # model = Pipeline(
+    #   steps=[
+    #      ("tfidf", TfidfVectorizer(max_features=max_features)),
+    #     (
+    #        "clf",
+    #       RandomForestClassifier(
+    #          n_estimators=200,
+    #         random_state=random_state,
+    #        class_weight="balanced",
+    #       n_jobs=-1,
+    #  ),
+    # ),
+    # ]
+    # )
+    # algorithm_name = "random_forest"
+
+    return model, algorithm_name
 
 
 def train_and_log(
@@ -69,9 +91,12 @@ def train_and_log(
     max_features: int,
     c_value: float,
     registry_model_name: str,
-    selection_metric: str,
-) -> dict:
+):
+    print("\nLoading dataset...")
     df = pd.read_csv(input_path)
+
+    print(f"Dataset size: {len(df)} samples")
+
     X_train, X_test, y_train, y_test = train_test_split(
         df["prompt"],
         df["label"],
@@ -81,124 +106,115 @@ def train_and_log(
     )
 
     mlflow.set_tracking_uri(tracking_uri)
-    mlflow.set_experiment(experiment_name)
-
-    candidates = _candidate_models(
-        random_state=random_state,
-        max_features=max_features,
-        c_value=c_value,
-    )
-
-    best_name = None
-    best_model = None
-    best_metrics = None
-    best_metric_value = -1.0
-
-    for model_name, model in candidates.items():
-        with mlflow.start_run(run_name=f"benchmark_{model_name}") as run:
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
-            metrics = _compute_metrics(y_test, preds)
-
-            mlflow.log_params(
-                {
-                    "algorithm": model_name,
-                    "random_state": random_state,
-                    "test_size": test_size,
-                    "max_features": max_features,
-                    "c_value": c_value,
-                    "selection_metric": selection_metric,
-                }
-            )
-            mlflow.log_metrics(metrics)
-            mlflow.sklearn.log_model(model, artifact_path="model")
-
-            metric_value = float(metrics[selection_metric])
-            if metric_value > best_metric_value:
-                best_metric_value = metric_value
-                best_name = model_name
-                best_model = model
-                best_metrics = metrics
-                best_run_id = run.info.run_id
-
-    model_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(best_model, model_path)
-
-    benchmark_summary = {
-        "best_algorithm": best_name,
-        "selection_metric": selection_metric,
-        "best_run_id": best_run_id,
-        "metrics": best_metrics,
-    }
-    pd.DataFrame([benchmark_summary]).to_json(metrics_path, orient="records", indent=2)
-
     client = MlflowClient()
-    model_uri = f"runs:/{best_run_id}/model"
-    registered = mlflow.register_model(model_uri=model_uri, name=registry_model_name)
-    client.set_model_version_tag(
-        name=registry_model_name,
-        version=registered.version,
-        key="selected_by",
-        value=selection_metric,
-    )
-    client.set_model_version_tag(
-        name=registry_model_name,
-        version=registered.version,
-        key="algorithm",
-        value=best_name,
-    )
 
-    try:
-        client.transition_model_version_stage(
-            name=registry_model_name,
-            version=registered.version,
-            stage="Production",
-            archive_existing_versions=True,
-        )
-    except Exception:
-        client.set_registered_model_tag(
-            name=registry_model_name,
-            key="production_candidate_version",
-            value=str(registered.version),
-        )
+    # Robust experiment handling
+    exp = client.get_experiment_by_name(experiment_name)
+    if exp:
+        if exp.lifecycle_stage == "deleted":
+            print(f"Restoring deleted experiment: {experiment_name}")
+            client.restore_experiment(exp.experiment_id)
+    else:
+        mlflow.create_experiment(experiment_name)
 
-    return benchmark_summary
-    clf = Pipeline(
-        steps=[
-            ("tfidf", TfidfVectorizer(max_features=max_features)),
-            ("lr", LogisticRegression(C=c_value, random_state=random_state, max_iter=500)),
-        ]
-    )
-    clf.fit(X_train, y_train)
-    preds = clf.predict(X_test)
-
-    metrics = {
-        "accuracy": accuracy_score(y_test, preds),
-        "precision": precision_score(y_test, preds, zero_division=0),
-        "recall": recall_score(y_test, preds, zero_division=0),
-        "f1": f1_score(y_test, preds, zero_division=0),
-    }
-
-    model_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(clf, model_path)
-
-    pd.DataFrame([metrics]).to_json(metrics_path, orient="records", indent=2)
-
-    mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
-    with mlflow.start_run():
+
+    model, algorithm_name = build_model(random_state, max_features, c_value)
+
+    print(f"\nTraining model: {algorithm_name}")
+
+    with mlflow.start_run(run_name=f"train_{algorithm_name}") as run:
+        model.fit(X_train, y_train)
+        preds = model.predict(X_test)
+        metrics = _compute_metrics(y_test, preds)
+
+        print("Metrics:", metrics)
+
         mlflow.log_params(
             {
+                "algorithm": algorithm_name,
                 "random_state": random_state,
-                "test_size": test_size,
                 "max_features": max_features,
                 "c_value": c_value,
             }
         )
+
         mlflow.log_metrics(metrics)
-        mlflow.log_artifact(str(metrics_path))
-        mlflow.sklearn.log_model(clf, artifact_path="model")
+
+        # Log and Register model WITHIN the run block to fix artifact warnings
+        model_info = mlflow.sklearn.log_model(
+            sk_model=model, artifact_path="model", registered_model_name=registry_model_name
+        )
+
+        print("Run ID:", run.info.run_id)
+        new_version = model_info.registered_model_version
+
+    # Save local artifacts
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, model_path)
+    pd.DataFrame([metrics]).to_json(metrics_path, orient="records", indent=2)
+
+    print(f"\nModel registered as version: {new_version}")
+
+    # Set metadata tag for the version
+    client.set_model_version_tag(
+        name=registry_model_name,
+        version=new_version,
+        key="algorithm",
+        value=algorithm_name,
+    )
+
+    # --- PROMOTION LOGIC (Modern Aliases) ---
+    promote = True
+
+    try:
+        # Check if a "champion" model already exists
+        champion_version = client.get_model_version_by_alias(registry_model_name, "champion")
+
+        # Get metrics for the champion
+        champ_run = mlflow.get_run(champion_version.run_id)
+        old_f1 = champ_run.data.metrics.get("f1", 0)
+        new_f1 = metrics["f1"]
+
+        print(f"\nCurrent Champion F1: {old_f1}")
+        print(f"New Model F1: {new_f1}")
+
+        if new_f1 <= old_f1:
+            promote = False
+            print("New model is NOT better. Keeping current Champion.")
+    except mlflow.exceptions.RestException:
+        # This occurs if the alias "champion" doesn't exist yet (first run)
+        print("No existing Champion found. This is our first leader!")
+
+    if promote:
+        print(f"Promoting model version {new_version} to 'champion' alias...")
+        client.set_registered_model_alias(
+            name=registry_model_name, alias="champion", version=str(new_version)
+        )
+        print("Model promoted successfully.")
+    else:
+        print(f"Model version {new_version} remains a challenger.")
 
     return metrics
+
+
+# ... existing imports ...
+
+if __name__ == "__main__":
+    # Load parameters from params.yml
+    with open("params.yaml", "r") as f:
+        params = yaml.safe_load(f)
+
+    train_and_log(
+        input_path=Path(params["data"]["processed_path"]),
+        model_path=Path(params["model"]["path"]),
+        metrics_path=Path(params["model"]["metrics_path"]),
+        tracking_uri=params["mlflow"]["tracking_uri"],
+        experiment_name=params["mlflow"]["experiment_name"],
+        random_state=params["training"]["random_state"],
+        test_size=params["training"]["test_size"],
+        max_features=params["training"]["max_features"],
+        c_value=params["training"]["c_value"],
+        registry_model_name=params["model"]["registry_name"],
+    )

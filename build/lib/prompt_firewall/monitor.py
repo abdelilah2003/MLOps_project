@@ -1,6 +1,6 @@
 from pathlib import Path
 import pandas as pd
-from evidently import ColumnMapping
+from evidently.pipeline.column_mapping import ColumnMapping
 from evidently.metric_preset import DataDriftPreset, DataQualityPreset
 from evidently.report import Report
 
@@ -15,3 +15,11 @@ def build_monitoring_report(reference_path: Path, current_path: Path, output_pat
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report.save_html(str(output_path))
+
+
+if __name__ == "__main__":
+    build_monitoring_report(
+        reference_path=Path("data/processed/prompts.csv"),
+        current_path=Path("data/processed/prompts.csv"),
+        output_path=Path("reports/evidently_report.html"),
+    )
