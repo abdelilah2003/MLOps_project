@@ -26,8 +26,15 @@ pipeline {
     PIP_AUDIT_REPORT = 'pip-audit-report.json'
     TRIVY_REPORT = 'trivy-report.json'
 
+
+    DEPENDENCY_TRACK_URL = 'http://localhost:8081'
+    DEPENDENCY_TRACK_PROJECT_UUID = '6ff10df0-18c5-4785-9363-01ef1fb180ef'
+
     MLFLOW_TRACKING_URI = 'http://localhost:5000'
   }
+
+
+
 
   stages {
 
@@ -266,22 +273,33 @@ RUN_DEPLOY    = ${env.RUN_DEPLOY}
       }
     }
 
+
     stage('Upload SBOM') {
+
       when {
         expression { env.RUN_DEPLOY == 'true' }
       }
 
       steps {
 
-        sh '''
-        curl -X POST "$DEPENDENCY_TRACK_URL/api/v1/bom" \
-        -H "X-Api-Key: $DEPENDENCY_TRACK_API_KEY" \
-        -F "project=$DEPENDENCY_TRACK_PROJECT_UUID" \
-        -F "bom=@${SBOM_FILE}"
-        '''
+        withCredentials([
+          string(credentialsId: 'dependency-track-api-key', variable: 'DEPENDENCY_TRACK_API_KEY'),
+          string(credentialsId: 'dependency-track-project-uuid', variable: 'DEPENDENCY_TRACK_PROJECT_UUID')
+        ]) {
+
+          sh '''
+          curl -X POST "http://localhost:8081/api/v1/bom" \
+            -H "X-Api-Key: $DEPENDENCY_TRACK_API_KEY" \
+            -F "project=$DEPENDENCY_TRACK_PROJECT_UUID" \
+            -F "bom=@${SBOM_FILE}"
+          '''
+        }
 
       }
+
     }
+
+
 
     stage('Trivy Image Scan') {
       when {
