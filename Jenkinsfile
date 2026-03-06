@@ -62,18 +62,32 @@ pipeline {
       }
     }
 
+
     stage('Install') {
       when {
         expression { env.RUN_SETUP == 'true' }
       }
+
       steps {
         sh '''
-          rm -rf .venv
-          python3 -m venv .venv
-          . .venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e .
+          if [ ! -d ".venv" ]; then
+            echo "Creating virtual environment..."
+
+            python3 -m venv .venv
+            . .venv/bin/activate
+
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install -e .
+
+          else
+            echo "Using existing virtual environment..."
+
+            . .venv/bin/activate
+
+            pip install --upgrade pip
+            pip install -r requirements.txt
+          fi
         '''
       }
     }
@@ -132,6 +146,28 @@ pipeline {
         sh '''
           . .venv/bin/activate
           dvc repro prepare_data
+        '''
+      }
+    }
+
+    stage('Start MLflow') {
+      when {
+        expression { env.RUN_TRAIN == 'true' }
+      }
+
+      steps {
+        sh '''
+          . .venv/bin/activate
+
+          echo "Starting MLflow server..."
+
+          nohup mlflow server \
+            --backend-store-uri sqlite:///mlflow.db \
+            --default-artifact-root ./mlruns \
+            --host 0.0.0.0 \
+            --port 5000 > mlflow.log 2>&1 &
+
+          sleep 5
         '''
       }
     }
