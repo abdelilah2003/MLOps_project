@@ -38,7 +38,7 @@ pipeline {
           env.IMAGE_TAG = params.MODEL_IMAGE_TAG?.trim() ? params.MODEL_IMAGE_TAG.trim() : env.BUILD_NUMBER
 
           env.RUN_SETUP   = (params.PIPELINE_MODE in ['full', 'prepare-data-only', 'train-only']) ? 'true' : 'false'
-          env.RUN_QUALITY = (params.PIPELINE_MODE == 'full') ? 'true' : 'false'
+          env.RUN_QUALITY = (params.PIPELINE_MODE in ['full','train-only']) ? 'true' : 'false'
           env.RUN_PREPARE = (params.PIPELINE_MODE in ['full', 'prepare-data-only']) ? 'true' : 'false'
           env.RUN_TRAIN   = (params.PIPELINE_MODE in ['full', 'train-only']) ? 'true' : 'false'
           env.RUN_DEPLOY  = (params.PIPELINE_MODE in ['full', 'deploy-only']) ? 'true' : 'false'
