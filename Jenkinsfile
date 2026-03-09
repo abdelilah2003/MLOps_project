@@ -25,6 +25,7 @@ pipeline {
     GITLEAKS_REPORT = 'gitleaks-report.json'
     PIP_AUDIT_REPORT = 'pip-audit-report.json'
     TRIVY_REPORT = 'trivy-report.json'
+    DOCKERHUB_CREDENTIALS_ID = 'dockerhub-creds'
 
 
     DEPENDENCY_TRACK_URL = 'http://localhost:8081'
@@ -334,8 +335,9 @@ RUN_DEPLOY    = ${env.RUN_DEPLOY}
     }
 
     stage('Push Docker Image') {
+
       when {
-        expression { env.RUN_DEPLOY == 'true' }
+        expression { env.RUN_DEPLOY == 'true' && env.DOCKERHUB_CREDENTIALS_ID }
       }
 
       steps {
@@ -349,16 +351,19 @@ RUN_DEPLOY    = ${env.RUN_DEPLOY}
         ]) {
 
           sh '''
+          echo "Logging into DockerHub..."
+
           echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+          echo "Pushing Docker images..."
+
           docker push ${IMAGE_NAME}:${IMAGE_TAG}
           docker push ${IMAGE_NAME}:latest
           '''
-
         }
-
       }
     }
-
+  
     stage('Deploy Container') {
       when {
         expression { env.RUN_DEPLOY == 'true' }
