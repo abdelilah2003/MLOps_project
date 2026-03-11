@@ -55,6 +55,7 @@ REFERENCE_BLOCK_RATE_GAUGE.set(REFERENCE_BLOCK_RATE)
 # Request Schema
 # -----------------------------
 
+
 class PromptRequest(BaseModel):
     prompt: str
 
@@ -62,6 +63,7 @@ class PromptRequest(BaseModel):
 # -----------------------------
 # Drift Metrics Update
 # -----------------------------
+
 
 def _update_drift_metrics(prediction: int) -> None:
     prediction_window.append(prediction)
@@ -75,6 +77,7 @@ def _update_drift_metrics(prediction: int) -> None:
 # -----------------------------
 # Startup: Load model once
 # -----------------------------
+
 
 @app.on_event("startup")
 def load_model():
@@ -90,6 +93,7 @@ def load_model():
 # Health Endpoint
 # -----------------------------
 
+
 @app.get("/health")
 def health() -> dict:
     return {
@@ -103,6 +107,7 @@ def health() -> dict:
 # -----------------------------
 # Prediction Endpoint
 # -----------------------------
+
 
 @app.post("/check")
 def check_prompt(payload: PromptRequest) -> dict:
@@ -121,9 +126,7 @@ def check_prompt(payload: PromptRequest) -> dict:
     _update_drift_metrics(prediction)
 
     blocked_rate = (
-        sum(prediction_window) / len(prediction_window)
-        if len(prediction_window) > 0
-        else 0
+        sum(prediction_window) / len(prediction_window) if len(prediction_window) > 0 else 0
     )
 
     return {
