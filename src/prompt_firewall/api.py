@@ -8,7 +8,7 @@ from prometheus_client import Counter, Gauge
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
-MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/model.joblib"))
+MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/best_model.joblib"))
 DRIFT_WINDOW_SIZE = int(os.getenv("DRIFT_WINDOW_SIZE", "200"))
 REFERENCE_BLOCK_RATE = float(os.getenv("REFERENCE_BLOCK_RATE", "0.5"))
 
@@ -70,4 +70,4 @@ def check_prompt(payload: PromptRequest) -> dict:
     PREDICTIONS_TOTAL.labels(label=str(prediction), decision=decision).inc()
     _update_drift_metrics(prediction)
 
-    return {"label": prediction, "decision": decision}
+    return {"label": prediction, "decision": decision, "test": pipeline_dev_test}
