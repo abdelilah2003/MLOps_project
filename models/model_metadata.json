@@ -1,0 +1,13 @@
+{
+  "best_model": "linear_svm",
+  "best_f1": 0.9961330239752514,
+  "labels": {
+    "allow": 0,
+    "block": 1
+  },
+  "dataset_path": "data/final_dataset.csv",
+  "benchmark_file": "artifacts/benchmark.csv",
+  "version": "v1",
+  "stage": "Production",
+  "promoted_at": "2026-02-21T15:47:59.177708+00:00"
+}

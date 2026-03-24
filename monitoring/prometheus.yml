@@ -5,9 +5,9 @@ scrape_configs:
 
   - job_name: "prometheus"
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["prometheus:9090"]
 
   - job_name: "prompt-firewall-api"
     metrics_path: /metrics
     static_configs:
-      - targets: ["172.17.0.1:8000"]
+      - targets: ["prompt-firewall-api:8000"]

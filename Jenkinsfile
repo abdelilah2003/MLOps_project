@@ -163,6 +163,41 @@ RUN_DEPLOY    = ${env.RUN_DEPLOY}
       }
     }
 
+    stage('Validate Dataset Integrity') {
+      when {
+        expression { params.PIPELINE_MODE in ['full','train-only'] }
+      }
+
+      steps {
+        withCredentials([
+          string(credentialsId: 'dataset-hash', variable: 'DATASET_HASH')
+        ]) {
+          sh '''
+          echo "Checking dataset integrity..."
+
+          DATASET_PATH="data/processed/prompts.csv"
+
+          if [ ! -f "$DATASET_PATH" ]; then
+            echo "Dataset not found!"
+            exit 1
+          fi
+
+          ACTUAL_HASH=$(sha256sum "$DATASET_PATH" | cut -d ' ' -f1)
+
+          echo "Actual hash:   $ACTUAL_HASH"
+
+          if [ "$ACTUAL_HASH" != "$DATASET_HASH" ]; then
+            echo "Dataset integrity check FAILED!"
+            exit 1
+          fi
+
+          echo "Dataset integrity verified successfully"
+          '''
+        }
+      }
+    }
+
+
     stage('Start MLflow') {
       when {
         expression { env.RUN_TRAIN == 'true' }
